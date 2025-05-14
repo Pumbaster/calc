@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Currency Calculator">
+  <link rel="apple-touch-icon" href="/icon.png">
+  <title>Currency Calculator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="container">
+    <h1>Currency Calculator PWA</h1>
+
+    <h2>1. Ввод данных</h2>
+    <input type="date" id="operationDate" placeholder="Дата операции">
+    <input type="number" id="rubAmount" placeholder="Сумма в рублях">
+    <input type="number" id="rubCommission" placeholder="Комиссия при переводе (руб)">
+    <input type="number" id="dramReceived" placeholder="Получено драм">
+
+    <h2>2. Перевод AMD → USD → ILS</h2>
+    <input type="number" id="dramToUsdAmount" placeholder="Сумма в драм, потраченная на $">
+    <input type="number" id="dramCommission" placeholder="Комиссия при переводе в $ (драм)">
+    <p>Общая сумма списания (драмы): <strong id="dramSpent">0.00</strong></p>
+    <input type="number" id="usdTransferred" placeholder="Переведено долларов">
+    <input type="number" id="ilsReceived" placeholder="Получено шекелей">
+    <input type="number" id="ilsCommission" placeholder="Комиссия в шекелях">
+
+    <button onclick="calculateRates()">Рассчитать</button>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    async function calculateRates() {
+      const rubAmount = parseFloat(document.getElementById('rubAmount').value);
+      const rubCommission = parseFloat(document.getElementById('rubCommission').value);
+      const dramReceived = parseFloat(document.getElementById('dramReceived').value);
+
+      const dramToUsdAmount = parseFloat(document.getElementById('dramToUsdAmount').value);
+      const dramCommission = parseFloat(document.getElementById('dramCommission').value);
+      const usdTransferred = parseFloat(document.getElementById('usdTransferred').value);
+      const ilsReceived = parseFloat(document.getElementById('ilsReceived').value);
+      const ilsCommission = parseFloat(document.getElementById('ilsCommission').value);
+
+      const totalRub = rubAmount + rubCommission;
+      const rubToDramRate = dramReceived / totalRub;
+
+      const dramSpent = dramToUsdAmount + dramCommission;
+      document.getElementById('dramSpent').innerText = dramSpent.toFixed(2);
+
+      const ilsNet = ilsReceived - ilsCommission;
+
+      const rubSpentOnUsd = dramToUsdAmount / rubToDramRate;
+      const rubToUsdRate = rubSpentOnUsd / usdTransferred;
+
+      const ilsToRubRate = 1 / (ilsNet / (dramSpent / rubToDramRate));
+      const ilsToDramRate = dramSpent / ilsNet;
+
+      const response = await fetch(`https://openexchangerates.org/api/historical/${document.getElementById('operationDate').value}.json?app_id=69efcf80a410417592092dbd30dad0b7&symbols=RUB,AMD,USD,ILS`);
+      const data = await response.json();
+
+      document.getElementById('results').innerHTML = `
+        <h3>Результаты:</h3>
+        <p>Фактический курс RUB → AMD: ${rubToDramRate.toFixed(4)}</p>
+        <p>Официальный курс RUB → AMD: ${(data.rates.AMD / data.rates.RUB).toFixed(4)}</p>
+
+        <p>Фактический курс USD → RUB: ${rubToUsdRate.toFixed(4)}</p>
+        <p>Официальный курс USD → RUB: ${(data.rates.RUB / data.rates.USD).toFixed(4)}</p>
+
+        <p>Фактический курс ILS → RUB: ${ilsToRubRate.toFixed(4)}</p>
+        <p>Официальный курс ILS → RUB: ${(1 / (data.rates.ILS / data.rates.RUB)).toFixed(4)}</p>
+
+        <p>Фактический курс ILS → AMD: ${ilsToDramRate.toFixed(4)}</p>
+        <p>Официальный курс USD → ILS: ${(data.rates.ILS / data.rates.USD).toFixed(4)}</p>
+      `;
+    }
+  </script>
+</body>
+</html>
